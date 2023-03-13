@@ -1,8 +1,15 @@
 import argon2 from 'argon2';
 import { IsEmail, IsString } from 'class-validator';
-import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver } from 'type-graphql';
-import { MyContext } from 'src/apollo/createApolloServer';
-import { createAccessToken } from '../utils/jwt-auth';
+import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver, UseMiddleware } from 'type-graphql';
+import jwt from 'jsonwebtoken';
+import { MyContext } from '../apollo/createApolloServer';
+import { isAuthenticated } from '../middlewares/isAuthenticated';
+import {
+  createAccessToken,
+  createRefreshToken,
+  REFRESH_JWT_SECRET_KEY,
+  setRefreshTokenHeader,
+} from '../utils/jwt-auth';
 import User from '../entities/User';
 
 @InputType()
@@ -40,8 +47,14 @@ class LoginResponse {
   accessToken?: string;
 }
 
+@ObjectType({ description: '액세스 토큰 새로고침 반환 데이터' })
+class RefreshAccessTokenResponse {
+  @Field() accessToken: string;
+}
+
 @Resolver(User)
 export class UserResolver {
+  @UseMiddleware(isAuthenticated)
   @Query(() => User, { nullable: true })
   async me(@Ctx() ctx: MyContext): Promise<User | undefined> {
     if (!ctx.verifiedUser) return undefined;
@@ -64,7 +77,10 @@ export class UserResolver {
   }
 
   @Mutation(() => LoginResponse)
-  public async login(@Arg('loginInput') loginInput: LoginInput): Promise<LoginResponse> {
+  public async login(
+    @Arg('loginInput') loginInput: LoginInput,
+    @Ctx() { res, redis }: MyContext,
+  ): Promise<LoginResponse> {
     const { emailOrUsername, password } = loginInput;
 
     const user = await User.findOne({ where: [{ email: emailOrUsername }, { username: emailOrUsername }] });
@@ -82,7 +98,43 @@ export class UserResolver {
     }
 
     const accessToken = createAccessToken(user);
+    const refreshToken = createRefreshToken(user);
+    await redis.set(String(user.id), refreshToken);
+    setRefreshTokenHeader(res, refreshToken);
 
     return { user, accessToken };
+  }
+
+  @Mutation(() => RefreshAccessTokenResponse, { nullable: true })
+  async refreshAccessToken(@Ctx() { req, redis, res }: MyContext): Promise<RefreshAccessTokenResponse | null> {
+    const refreshToken = req.cookies.refreshtoken;
+    if (!refreshToken) return null;
+
+    let tokenData: any = null;
+    try {
+      tokenData = jwt.verify(refreshToken, REFRESH_JWT_SECRET_KEY);
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+    if (!tokenData) return null;
+
+    // 레디스 상에 user.id 로 저장된 토큰 조회
+    const storedRefreshToken = await redis.get(String(tokenData.userId));
+    if (!storedRefreshToken) return null;
+    if (!(storedRefreshToken === refreshToken)) return null;
+
+    const user = await User.findOne({ where: { id: tokenData.userId } });
+    if (!user) return null;
+
+    const newAccessToken = createAccessToken(user); // 액세스토큰생성
+    const newRefreshToken = createRefreshToken(user); // 리프레시토큰생성
+    // 리프레시토큰 redis저장
+    await redis.set(String(user.id), newRefreshToken);
+
+    // 쿠키로 리프레시 토큰 전송
+    setRefreshTokenHeader(res, newRefreshToken);
+
+    return { accessToken: newAccessToken };
   }
 }
