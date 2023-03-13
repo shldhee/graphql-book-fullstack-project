@@ -6,6 +6,7 @@ import { createApolloClient } from './apollo/createApolloCilent';
 import Main from './pages/Main';
 import Film from './pages/Film';
 import SignUp from './pages/SignUp';
+import Login from './pages/Login';
 
 const apolloClient = createApolloClient();
 
@@ -14,8 +15,9 @@ export const App = (): JSX.Element => (
     <ChakraProvider theme={theme}>
       <BrowserRouter>
         <Route exact path="/" component={Main} />
-        <Route exact path="/film/:filmId" component={Film} />
         <Route exact path="/signup" component={SignUp} />
+        <Route exact path="/login" component={Login} />
+        <Route exact path="/film/:filmId" component={Film} />
       </BrowserRouter>
     </ChakraProvider>
   </ApolloProvider>

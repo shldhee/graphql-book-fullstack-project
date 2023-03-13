@@ -1,6 +1,8 @@
 import argon2 from 'argon2';
 import { IsEmail, IsString } from 'class-validator';
-import { Arg, Field, InputType, Mutation, Resolver } from 'type-graphql';
+import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver } from 'type-graphql';
+import { MyContext } from 'src/apollo/createApolloServer';
+import { createAccessToken } from '../utils/jwt-auth';
 import User from '../entities/User';
 
 @InputType()
@@ -19,17 +21,17 @@ export class LoginInput {
   @Field() @IsString() password: string;
 }
 
-@InputType({ description: '필드 에러 타입' })
+@ObjectType({ description: '필드 에러 타입' })
 class FieldError {
   @Field() field: string;
 
   @Field() message: string;
 }
 
-@InputType({ description: '로그인 반환 데이터' })
+@ObjectType({ description: '로그인 반환 데이터' })
 class LoginResponse {
   @Field(() => [FieldError], { nullable: true })
-  errors: FieldError[];
+  errors?: FieldError[];
 
   @Field(() => User, { nullable: true })
   user?: User;
@@ -40,6 +42,12 @@ class LoginResponse {
 
 @Resolver(User)
 export class UserResolver {
+  @Query(() => User, { nullable: true })
+  async me(@Ctx() ctx: MyContext): Promise<User | undefined> {
+    if (!ctx.verifiedUser) return undefined;
+    return User.findOne({ where: { id: ctx.verifiedUser.userId } });
+  }
+
   @Mutation(() => User)
   async signUp(@Arg('signUpInput') signUpInput: SignUpInput): Promise<User> {
     const { email, username, password } = signUpInput;
@@ -56,10 +64,10 @@ export class UserResolver {
   }
 
   @Mutation(() => LoginResponse)
-  public async login(@Arg('loginInput') loginInput: LoginInput): Promise<LoginRespone> {
-    const { email, password } = loginInput;
+  public async login(@Arg('loginInput') loginInput: LoginInput): Promise<LoginResponse> {
+    const { emailOrUsername, password } = loginInput;
 
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ where: [{ email: emailOrUsername }, { username: emailOrUsername }] });
     if (!user) {
       return {
         errors: [{ field: 'email', message: '해당하는 유저가 없습니다.' }],
@@ -73,6 +81,8 @@ export class UserResolver {
       };
     }
 
-    return user;
+    const accessToken = createAccessToken(user);
+
+    return { user, accessToken };
   }
 }
