@@ -49,14 +49,7 @@ export const verifyAccessTokenFromReqHeaders = (headers: IncomingHttpHeaders): J
 };
 
 export const setRefreshTokenHeader = (res: Response, refreshToken: string): void => {
-  console.log('set cooookkkiiee');
   res.cookie('refreshtoken', refreshToken, {
-    // 자바스크립트 코드로 접근 불가능하도록
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-  });
-  res.cookie('refreshtoken123123', 'refreshToken123123', {
     // 자바스크립트 코드로 접근 불가능하도록
     httpOnly: true,
     secure: true,

@@ -54,6 +54,16 @@ class RefreshAccessTokenResponse {
 
 @Resolver(User)
 export class UserResolver {
+  @Mutation(() => Boolean)
+  @UseMiddleware(isAuthenticated)
+  async logout(@Ctx() { verifiedUser, res, redis }: MyContext): Promise<boolean> {
+    if (verifiedUser) {
+      setRefreshTokenHeader(res, '');
+      await redis.del(String(verifiedUser.userId));
+    }
+    return true;
+  }
+
   @UseMiddleware(isAuthenticated)
   @Query(() => User, { nullable: true })
   async me(@Ctx() ctx: MyContext): Promise<User | undefined> {
