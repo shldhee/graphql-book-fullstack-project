@@ -2,6 +2,7 @@ import { ApolloServerPluginLandingPageLocalDefault } from 'apollo-server-core';
 import { ApolloServer } from 'apollo-server-express';
 import { Request, Response } from 'express';
 import { buildSchema } from 'type-graphql';
+import { CutReviewResolver } from '../resolvers/CutReview';
 import redis from '../redis/redis-client';
 import { JwtVerifiedUser, verifyAccessTokenFromReqHeaders } from '../utils/jwt-auth';
 import { CutResolver } from '../resolvers/Cut';
@@ -20,7 +21,7 @@ export interface MyContext {
 const createApolloServer = async (): Promise<ApolloServer> => {
   return new ApolloServer<MyContext>({
     schema: await buildSchema({
-      resolvers: [FilmResolver, CutResolver, UserResolver],
+      resolvers: [FilmResolver, CutResolver, UserResolver, CutReviewResolver],
     }),
     plugins: [ApolloServerPluginLandingPageLocalDefault()],
     context: ({ req, res }) => {

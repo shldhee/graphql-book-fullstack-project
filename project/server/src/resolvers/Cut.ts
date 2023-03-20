@@ -1,14 +1,14 @@
-import { Arg, Ctx, Field, FieldResolver, Int, Mutation, Query, Resolver, Root, UseMiddleware } from 'type-graphql';
-import { CutVote } from '../entities/CutVote';
+import { Arg, Ctx, FieldResolver, Int, Mutation, Query, Resolver, Root, UseMiddleware } from 'type-graphql';
 import { MyContext } from '../apollo/createApolloServer';
-import { Cut } from '../entities/Cut';
-import { Film } from '../entities/Film';
 import ghibliData from '../data/ghibli';
+import { Cut } from '../entities/Cut';
+import { CutVote } from '../entities/CutVote';
+import { Film } from '../entities/Film';
 import { isAuthenticated } from '../middlewares/isAuthenticated';
 
 @Resolver(Cut)
 export class CutResolver {
-  @Query(() => [Cut])
+  @Query(() => [Cut], { description: 'cut' })
   cuts(@Arg('filmId', () => Int) filmId: Film['id']): Cut[] {
     return ghibliData.cuts.filter((x) => x.filmId === filmId);
   }
