@@ -2,23 +2,30 @@ import {
   AspectRatio,
   Box,
   Button,
+  Center,
   Flex,
   Heading,
   HStack,
   Image,
+  SimpleGrid,
   Text,
   useColorModeValue,
+  useDisclosure,
   useToast,
 } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import { FaHeart } from 'react-icons/fa';
 import { CutDocument, CutQuery, CutQueryVariables, useMeQuery, useVoteMutation } from '../../generated/graphql';
+import FilmCutReview from './FilmCutReview';
+import FilmCutReviewDelete from './FilmCutReviewDelete';
+import FilmCutReviewRegiModal from './FilmCutReviewRegiModal';
 
 interface FilmCutDetailProps {
   cutImg: string;
   cutId: number;
   isVoted?: boolean;
   votesCount?: number;
+  reviews: CutQuery['cutReviews'];
 }
 
 export default function FilmCutDetail({
@@ -26,9 +33,12 @@ export default function FilmCutDetail({
   cutId,
   isVoted = false,
   votesCount = 0,
+  reviews,
 }: FilmCutDetailProps): JSX.Element {
   const toast = useToast();
   const voteButtonColor = useColorModeValue('gray.500', 'gray.400');
+  const reviewRegidialog = useDisclosure();
+  const deleteAlert = useDisclosure();
   const [vote, { loading: voteLoading }] = useVoteMutation({
     variables: { cutId },
     update: (cache, fetchResult) => {
@@ -91,10 +101,39 @@ export default function FilmCutDetail({
             >
               <Text>{votesCount}</Text>
             </Button>
-            <Button colorScheme="teal">감상 남기기</Button>
+            <Button colorScheme="teal" onClick={reviewRegidialog.onOpen}>
+              감상 남기기
+            </Button>
           </HStack>
         </Flex>
+        <Box mt={6}>
+          {!reviews || reviews.length === 0 ? (
+            <Center minH={100}>
+              <Text>제일 먼 감상을 남겨보세요!</Text>
+            </Center>
+          ) : (
+            <SimpleGrid mt={3} spacing={4} columns={{ base: 1, sm: 2 }}>
+              {reviews.slice(0, 2).map((review) => (
+                <FilmCutReview
+                  key={review.id}
+                  author={review.user.username}
+                  contents={review.contents}
+                  isMine={review.isMine}
+                  onEditClick={reviewRegidialog.onOpen}
+                  onDeleteClick={deleteAlert.onOpen}
+                />
+              ))}
+            </SimpleGrid>
+          )}
+        </Box>
       </Box>
+
+      <FilmCutReviewRegiModal cutId={cutId} isOpen={reviewRegidialog.isOpen} onClose={reviewRegidialog.onClose} />
+      <FilmCutReviewDelete
+        target={reviews?.find((review) => review.isMine)}
+        isOpen={deleteAlert.isOpen}
+        onClose={deleteAlert.onClose}
+      />
     </Box>
   );
 }
