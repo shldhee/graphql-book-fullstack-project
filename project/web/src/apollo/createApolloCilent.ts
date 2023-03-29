@@ -1,4 +1,4 @@
-import { ApolloClient, from, fromPromise, HttpLink, NormalizedCacheObject, split } from '@apollo/client';
+import { ApolloClient, from, fromPromise, NormalizedCacheObject, split } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
 import { WebSocketLink } from '@apollo/client/link/ws';
@@ -59,7 +59,7 @@ const wsLink = new WebSocketLink({
     connectionParams: () => {
       const accessToken = localStorage.getItem('access_token');
       return {
-        Authrization: accessToken ? `Bearer ${accessToken}` : '',
+        Authorization: accessToken ? `Bearer ${accessToken}` : '',
       };
     },
   },
@@ -71,7 +71,8 @@ const splitLink = split(
     return definition.kind === 'OperationDefinition' && definition.operation === 'subscription';
   },
   from([wsLink]),
-  from([authLink, errorLink, httpUploadLink]),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  from([authLink, errorLink, httpUploadLink as any]),
 );
 
 export const createApolloClient = (): ApolloClient<NormalizedCacheObject> => {

@@ -12,6 +12,7 @@ import {
   Subscription,
   UseMiddleware,
 } from 'type-graphql';
+import { MySubscriptionContext } from '../apollo/createSubscriptionServer';
 import { MyContext } from '../apollo/createApolloServer';
 import Notification from '../entities/Notification';
 import { isAuthenticated } from '../middlewares/isAuthenticated';
@@ -48,6 +49,13 @@ export class NotificationResolver {
   @Subscription({
     topics: 'NOTIFICATION_CREATED',
     // 자기 자신에게 온 알림이 생성되었을 때만 실행되어야 함.
+    filter: ({ payload, context }: ResolverFilterData<Notification, null, MySubscriptionContext>) => {
+      const { verifiedUser } = context;
+      if (verifiedUser && payload && payload.userId === verifiedUser.userId) {
+        return true;
+      }
+      return false;
+    },
   })
   newNotification(@Root() notificationPayload: Notification): Notification {
     return notificationPayload;
