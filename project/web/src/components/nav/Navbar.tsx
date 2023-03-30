@@ -40,7 +40,8 @@ const LoggendInNavbarItem = (): JSX.Element => {
   const { data } = useMeQuery({ skip: !accessToken });
   const profileImage = useMemo(() => {
     if (data?.me?.profileImage) {
-      return `http://localhost:4000/${data?.me?.profileImage}`;
+      // return `http://localhost:4000/${data?.me?.profileImage}`;
+      return `${process.env.REACT_APP_API_HOST}/${data?.me?.profileImage}`;
     }
     return '';
   }, [data]);
